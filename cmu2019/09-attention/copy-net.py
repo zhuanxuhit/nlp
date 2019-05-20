@@ -114,6 +114,5 @@ class CopyNetDecoder(nn.Module):
         emb = self.embed(y_sorted)
         # emb: [batch, seq_len, embed_size]
         for emb_t in emb.split(1):
-        # 单个 embedding 输入 y(t_1)
-
-        pass
+            # 单个 embedding 输入 y(t_1)
+            pass
