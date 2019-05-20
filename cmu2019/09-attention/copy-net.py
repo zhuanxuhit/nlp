@@ -100,19 +100,32 @@ class CopyNetDecoder(nn.Module):
         super(CopyNetDecoder, self).__init__()
         self.embed = nn.Embedding(vocab_size, embed_size)
         # self.attention = Attention(enc_hidden_size, dec_hidden_size)
-        self.rnn = nn.GRU(2 * enc_hidden_size + embed_size, dec_hidden_size, batch_first=True)
+        self.gru = nn.GRU(2 * enc_hidden_size + embed_size, dec_hidden_size, batch_first=True)
         self.out = nn.Linear(dec_hidden_size, vocab_size)
         self.dropout = nn.Dropout(dropout)
+        # weights
+        self.Wo = nn.Linear(dec_hidden_size, vocab_size)  # generate mode
+        self.Wc = nn.Linear(enc_hidden_size * 2, dec_hidden_size)  # copy mode
+        self.nonlinear = nn.Tanh()
 
-    def forward(self, ctx, ctx_lengths, y, y_lengths, hid):
-        sorted_len, sorted_idx = y_lengths.sort(0, descending=True)
-        y_sorted = y[sorted_idx.long()]
-        hid = hid[:, sorted_idx.long()]
+    def forward(self, ctx, ctx_lengths, y, y_lengths, hid, weighted):
+        # weighted [b,1,enc_hidden_size*2]
+        # hid [1, b, dec_hidden_size]
+        # sorted_len, sorted_idx = y_lengths.sort(0, descending=True)
+        # y_sorted = y[sorted_idx.long()]
+        # hid = hid[:, sorted_idx.long()]
 
-        y_sorted = self.dropout(self.embed(y_sorted))  # batch_size, output_length, embed_size
-
-        emb = self.embed(y_sorted)
+        # y_sorted = self.dropout(self.embed(y_sorted))  # batch_size, output_length, embed_size
+        batch = y.size()[0]
+        emb = self.embed(y)
         # emb: [batch, seq_len, embed_size]
-        for emb_t in emb.split(1):
+        # weight =
+        for emb_t in emb.split(1, dim=1):
             # 单个 embedding 输入 y(t_1)
-            pass
+            # emb_t [b, 1, embed_size]
+            # weighted [b,1,enc_hidden_size*2]
+            gru_input = torch.cat([emb_t, weighted], dim=2)
+            # gru_input  [b,1,enc_hidden_size*2 + embed_size]
+            # hid [1, b, dec_hidden_size]
+            # out [b,1,dec_hidden_size]
+            out, hid = self.gru(gru_input, hid)
